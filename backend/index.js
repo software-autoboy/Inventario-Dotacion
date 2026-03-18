@@ -10,6 +10,24 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+// RUTA DE PRUEBA DE BASE DE DATOS
+app.get('/test-db', async (req, res) => {
+  try {
+    const [rows] = await db.query('SELECT 1 + 1 AS result');
+    res.json({ 
+      success: true, 
+      message: "Conexión con Aiven EXITOSA", 
+      data: rows 
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      message: "Error conectando a la base de datos", 
+      error: error.message 
+    });
+  }
+});
+
 app.get('/', (req, res) => {
   res.send('🚀 Backend de Inventario funcionando');
 });
