@@ -1,3 +1,3 @@
 // Configuración de la URL base del backend
-// Ajusta este valor si el backend corre en otro host o puerto
-export const API_URL = 'http://localhost:5000/api';
+// En Vercel, la API estará en la misma URL bajo /api
+export const API_URL = import.meta.env.VITE_API_URL || '/api';
