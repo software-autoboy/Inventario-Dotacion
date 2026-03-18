@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { API_URL } from '../apiConfig';
 import { useAuth } from '../AuthContext';
-import { ClipboardList, PlusCircle, ArrowDownCircle, ArrowUpCircle, RotateCcw } from 'lucide-react';
+import { PlusCircle, ArrowDownCircle, ArrowUpCircle, RotateCcw } from 'lucide-react';
 
 interface Movement {
   id: number;

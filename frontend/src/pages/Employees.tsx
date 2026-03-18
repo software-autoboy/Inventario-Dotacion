@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { API_URL } from '../apiConfig';
 import { useAuth } from '../AuthContext';
-import { Plus, Users, Search, MapPin, Briefcase, FileText } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Plus, Users, Search, MapPin, Briefcase } from 'lucide-react';
 import GeneratePdf from '../components/GeneratePdf';
 
 interface Employee {
