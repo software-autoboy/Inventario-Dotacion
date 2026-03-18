@@ -10,6 +10,11 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+// Ruta de prueba para confirmar que el backend funciona en Vercel
+app.get('/', (req, res) => {
+  res.send('🚀 Backend de Inventario funcionando correctamente');
+});
+
 // Auth Middleware
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
