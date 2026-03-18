@@ -7,79 +7,65 @@ const db = require('./db');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// --- CONFIGURACIÓN DE CORS ---
-// Esto permite que tu frontend en Vercel se comunique con este backend
-app.use(cors({
-  origin: '*', // Permite todos los orígenes temporalmente para debugear, o pon tu URL de Vercel del frontend
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
-
+app.use(cors());
 app.use(express.json());
 
 // Ruta de prueba para confirmar que el backend funciona
 app.get('/', (req, res) => {
-  res.send('🚀 Backend de Inventario Autoboy funcionando correctamente');
+  res.send('🚀 Backend de Inventario funcionando correctamente');
 });
 
-// --- MIDDLEWARE DE AUTENTICACIÓN ---
+// Middleware de autenticación
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
-  if (!token) return res.status(401).json({ message: 'Token no proporcionado' });
+  if (!token) return res.sendStatus(401);
 
   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) return res.status(403).json({ message: 'Token inválido o expirado' });
+    if (err) return res.sendStatus(403);
     req.user = user;
     next();
   });
 };
 
 // --- RUTAS DE AUTENTICACIÓN ---
-app.post('/api/login', (req, res) => {
+app.post('/login', (req, res) => {
   const { username, password } = req.body;
-  
-  // Usar variables de entorno para mayor seguridad
-  const adminUser = process.env.ADMIN_USER || 'admin';
-  const adminPass = process.env.ADMIN_PASS || 'admin123';
-
-  if (username === adminUser && password === adminPass) {
+  if (username === process.env.ADMIN_USER && password === process.env.ADMIN_PASS) {
     const token = jwt.sign({ username }, process.env.JWT_SECRET, { expiresIn: '8h' });
     return res.json({ token });
   }
-  
-  res.status(401).json({ message: 'Usuario o contraseña incorrectos' });
+  res.status(401).json({ message: 'Credenciales inválidas' });
 });
 
 // --- CATEGORÍAS ---
-app.get('/api/categorias', authenticateToken, async (req, res) => {
+app.get('/categorias', authenticateToken, async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT * FROM categorias ORDER BY nombre ASC');
+    const [rows] = await db.query('SELECT * FROM categorias');
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-app.post('/api/categorias', authenticateToken, async (req, res) => {
+app.post('/categorias', authenticateToken, async (req, res) => {
   const { nombre } = req.body;
   try {
     await db.query('INSERT INTO categorias (nombre) VALUES (?)', [nombre]);
-    res.status(201).json({ message: 'Categoría creada con éxito' });
+    res.status(201).json({ message: 'Categoría creada' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
 // --- ARTÍCULOS ---
-app.get('/api/articulos', authenticateToken, async (req, res) => {
+app.get('/articulos', authenticateToken, async (req, res) => {
   try {
     const [rows] = await db.query(`
       SELECT a.*, c.nombre as categoria_nombre 
       FROM articulos a 
       LEFT JOIN categorias c ON a.categoria_id = c.id
-      ORDER BY a.nombre ASC
     `);
     res.json(rows);
   } catch (error) {
@@ -87,20 +73,20 @@ app.get('/api/articulos', authenticateToken, async (req, res) => {
   }
 });
 
-app.post('/api/articulos', authenticateToken, async (req, res) => {
+app.post('/articulos', authenticateToken, async (req, res) => {
   const { nombre, descripcion, categoria_id, stock_actual, talla } = req.body;
   try {
     await db.query(
       'INSERT INTO articulos (nombre, descripcion, categoria_id, stock_actual, talla) VALUES (?, ?, ?, ?, ?)',
       [nombre, descripcion, categoria_id, stock_actual || 0, talla]
     );
-    res.status(201).json({ message: 'Artículo creado con éxito' });
+    res.status(201).json({ message: 'Artículo creado' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-app.put('/api/articulos/:id', authenticateToken, async (req, res) => {
+app.put('/articulos/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { nombre, descripcion, categoria_id, stock_actual, talla } = req.body;
   try {
@@ -114,7 +100,7 @@ app.put('/api/articulos/:id', authenticateToken, async (req, res) => {
   }
 });
 
-app.delete('/api/articulos/:id', authenticateToken, async (req, res) => {
+app.delete('/articulos/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   try {
     await db.query('DELETE FROM articulos WHERE id=?', [id]);
@@ -125,30 +111,30 @@ app.delete('/api/articulos/:id', authenticateToken, async (req, res) => {
 });
 
 // --- EMPLEADOS ---
-app.get('/api/empleados', authenticateToken, async (req, res) => {
+app.get('/empleados', authenticateToken, async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT * FROM empleados ORDER BY nombre_completo ASC');
+    const [rows] = await db.query('SELECT * FROM empleados');
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-app.post('/api/empleados', authenticateToken, async (req, res) => {
+app.post('/empleados', authenticateToken, async (req, res) => {
   const { documento, nombre_completo, cargo, area } = req.body;
   try {
     await db.query(
       'INSERT INTO empleados (documento, nombre_completo, cargo, area) VALUES (?, ?, ?, ?)',
       [documento, nombre_completo, cargo, area]
     );
-    res.status(201).json({ message: 'Empleado creado con éxito' });
+    res.status(201).json({ message: 'Empleado creado' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
 // --- MOVIMIENTOS ---
-app.post('/api/movimientos', authenticateToken, async (req, res) => {
+app.post('/movimientos', authenticateToken, async (req, res) => {
   let { articulo_id, empleado_id, tipo, cantidad, observaciones } = req.body;
   articulo_id = Number(articulo_id);
   cantidad = Number(cantidad);
@@ -156,7 +142,7 @@ app.post('/api/movimientos', authenticateToken, async (req, res) => {
   if (tipo === 'ENTRADA') {
     empleado_id = null;
   } else if (!empleado_id) {
-    return res.status(400).json({ error: 'empleado_id es obligatorio para este tipo de movimiento' });
+    return res.status(400).json({ error: 'empleado_id es obligatorio' });
   }
 
   const connection = await db.getConnection();
@@ -167,10 +153,11 @@ app.post('/api/movimientos', authenticateToken, async (req, res) => {
       const [artRows] = await connection.query('SELECT stock_actual, nombre FROM articulos WHERE id = ?', [articulo_id]);
       if (artRows.length === 0) throw new Error('Artículo no encontrado');
       if (artRows[0].stock_actual < cantidad) {
-        return res.status(400).json({ 
-          error: `Stock insuficiente para "${artRows[0].nombre}". Disponible: ${artRows[0].stock_actual}` 
-        });
+        return res.status(400).json({ error: `Stock insuficiente para ${artRows[0].nombre}` });
       }
+      await connection.query('UPDATE articulos SET stock_actual = stock_actual - ? WHERE id = ?', [cantidad, articulo_id]);
+    } else {
+      await connection.query('UPDATE articulos SET stock_actual = stock_actual + ? WHERE id = ?', [cantidad, articulo_id]);
     }
 
     await connection.query(
@@ -178,16 +165,8 @@ app.post('/api/movimientos', authenticateToken, async (req, res) => {
       [articulo_id, empleado_id, tipo, cantidad, observaciones]
     );
 
-    let stockUpdateQuery = '';
-    if (tipo === 'ENTREGA') {
-      stockUpdateQuery = 'UPDATE articulos SET stock_actual = stock_actual - ? WHERE id = ?';
-    } else {
-      stockUpdateQuery = 'UPDATE articulos SET stock_actual = stock_actual + ? WHERE id = ?';
-    }
-
-    await connection.query(stockUpdateQuery, [cantidad, articulo_id]);
     await connection.commit();
-    res.status(201).json({ message: 'Movimiento registrado correctamente' });
+    res.status(201).json({ message: 'Movimiento registrado' });
   } catch (error) {
     await connection.rollback();
     res.status(500).json({ error: error.message });
@@ -211,11 +190,8 @@ app.get('/movimientos', authenticateToken, async (req, res) => {
   }
 });
 
-// Para que funcione en local
-if (process.env.NODE_ENV !== 'production') {
-  app.listen(PORT, () => {
-    console.log(`Servidor local corriendo en puerto ${PORT}`);
-  });
-}
+app.listen(PORT, () => {
+  console.log(`Servidor corriendo en el puerto ${PORT}`);
+});
 
 module.exports = app;
