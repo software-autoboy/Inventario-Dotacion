@@ -7,42 +7,55 @@ const db = require('./db');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+// --- CONFIGURACIÓN DE CORS ---
+// Esto permite que tu frontend en Vercel se comunique con este backend
+app.use(cors({
+  origin: '*', // Permite todos los orígenes temporalmente para debugear, o pon tu URL de Vercel del frontend
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
 
-// Ruta de prueba para confirmar que el backend funciona en Vercel
+// Ruta de prueba para confirmar que el backend funciona
 app.get('/', (req, res) => {
-  res.send('🚀 Backend de Inventario funcionando correctamente');
+  res.send('🚀 Backend de Inventario Autoboy funcionando correctamente');
 });
 
-// Auth Middleware
+// --- MIDDLEWARE DE AUTENTICACIÓN ---
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
-  if (!token) return res.sendStatus(401);
+  if (!token) return res.status(401).json({ message: 'Token no proporcionado' });
 
   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) return res.sendStatus(403);
+    if (err) return res.status(403).json({ message: 'Token inválido o expirado' });
     req.user = user;
     next();
   });
 };
 
-// --- AUTH ROUTES ---
+// --- RUTAS DE AUTENTICACIÓN ---
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
-  if (username === process.env.ADMIN_USER && password === process.env.ADMIN_PASS) {
+  
+  // Usar variables de entorno para mayor seguridad
+  const adminUser = process.env.ADMIN_USER || 'admin';
+  const adminPass = process.env.ADMIN_PASS || 'admin123';
+
+  if (username === adminUser && password === adminPass) {
     const token = jwt.sign({ username }, process.env.JWT_SECRET, { expiresIn: '8h' });
     return res.json({ token });
   }
-  res.status(401).json({ message: 'Credenciales inválidas' });
+  
+  res.status(401).json({ message: 'Usuario o contraseña incorrectos' });
 });
 
 // --- CATEGORÍAS ---
 app.get('/api/categorias', authenticateToken, async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT * FROM categorias');
+    const [rows] = await db.query('SELECT * FROM categorias ORDER BY nombre ASC');
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -53,7 +66,7 @@ app.post('/api/categorias', authenticateToken, async (req, res) => {
   const { nombre } = req.body;
   try {
     await db.query('INSERT INTO categorias (nombre) VALUES (?)', [nombre]);
-    res.status(201).json({ message: 'Categoría creada' });
+    res.status(201).json({ message: 'Categoría creada con éxito' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -66,6 +79,7 @@ app.get('/api/articulos', authenticateToken, async (req, res) => {
       SELECT a.*, c.nombre as categoria_nombre 
       FROM articulos a 
       LEFT JOIN categorias c ON a.categoria_id = c.id
+      ORDER BY a.nombre ASC
     `);
     res.json(rows);
   } catch (error) {
@@ -80,7 +94,7 @@ app.post('/api/articulos', authenticateToken, async (req, res) => {
       'INSERT INTO articulos (nombre, descripcion, categoria_id, stock_actual, talla) VALUES (?, ?, ?, ?, ?)',
       [nombre, descripcion, categoria_id, stock_actual || 0, talla]
     );
-    res.status(201).json({ message: 'Artículo creado' });
+    res.status(201).json({ message: 'Artículo creado con éxito' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -113,7 +127,7 @@ app.delete('/api/articulos/:id', authenticateToken, async (req, res) => {
 // --- EMPLEADOS ---
 app.get('/api/empleados', authenticateToken, async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT * FROM empleados');
+    const [rows] = await db.query('SELECT * FROM empleados ORDER BY nombre_completo ASC');
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -127,69 +141,55 @@ app.post('/api/empleados', authenticateToken, async (req, res) => {
       'INSERT INTO empleados (documento, nombre_completo, cargo, area) VALUES (?, ?, ?, ?)',
       [documento, nombre_completo, cargo, area]
     );
-    res.status(201).json({ message: 'Empleado creado' });
+    res.status(201).json({ message: 'Empleado creado con éxito' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// --- MOVIMIENTOS (Dotación Logic) ---
+// --- MOVIMIENTOS ---
 app.post('/api/movimientos', authenticateToken, async (req, res) => {
   let { articulo_id, empleado_id, tipo, cantidad, observaciones } = req.body;
-
-  // Asegurar tipos numéricos
   articulo_id = Number(articulo_id);
   cantidad = Number(cantidad);
 
   if (tipo === 'ENTRADA') {
     empleado_id = null;
-  } else {
-    if (!empleado_id) {
-      return res.status(400).json({ error: 'empleado_id es obligatorio para este tipo de movimiento' });
-    }
-    empleado_id = Number(empleado_id);
+  } else if (!empleado_id) {
+    return res.status(400).json({ error: 'empleado_id es obligatorio para este tipo de movimiento' });
   }
 
   const connection = await db.getConnection();
   try {
     await connection.beginTransaction();
 
-    // 1. Verificar stock actual si es una ENTREGA
     if (tipo === 'ENTREGA') {
       const [artRows] = await connection.query('SELECT stock_actual, nombre FROM articulos WHERE id = ?', [articulo_id]);
       if (artRows.length === 0) throw new Error('Artículo no encontrado');
-      
-      const stockDisponible = artRows[0].stock_actual;
-      if (stockDisponible < cantidad) {
+      if (artRows[0].stock_actual < cantidad) {
         return res.status(400).json({ 
-          error: `Stock insuficiente para "${artRows[0].nombre}". Disponible: ${stockDisponible}, Solicitado: ${cantidad}` 
+          error: `Stock insuficiente para "${artRows[0].nombre}". Disponible: ${artRows[0].stock_actual}` 
         });
       }
     }
 
-    // 2. Registrar el Movimiento
     await connection.query(
       'INSERT INTO movimientos (articulo_id, empleado_id, tipo, cantidad, observaciones) VALUES (?, ?, ?, ?, ?)',
       [articulo_id, empleado_id, tipo, cantidad, observaciones]
     );
 
-    // 3. Actualizar stock según el tipo
     let stockUpdateQuery = '';
     if (tipo === 'ENTREGA') {
       stockUpdateQuery = 'UPDATE articulos SET stock_actual = stock_actual - ? WHERE id = ?';
-    } else if (tipo === 'ENTRADA' || tipo === 'DEVOLUCION') {
+    } else {
       stockUpdateQuery = 'UPDATE articulos SET stock_actual = stock_actual + ? WHERE id = ?';
     }
 
-    if (stockUpdateQuery) {
-      await connection.query(stockUpdateQuery, [cantidad, articulo_id]);
-    }
-
+    await connection.query(stockUpdateQuery, [cantidad, articulo_id]);
     await connection.commit();
-    res.status(201).json({ message: 'Movimiento registrado y stock actualizado' });
+    res.status(201).json({ message: 'Movimiento registrado correctamente' });
   } catch (error) {
     await connection.rollback();
-    console.error('Error en /api/movimientos:', error);
     res.status(500).json({ error: error.message });
   } finally {
     connection.release();
@@ -211,8 +211,11 @@ app.get('/api/movimientos', authenticateToken, async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en el puerto ${PORT}`);
-});
+// Para que funcione en local
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`Servidor local corriendo en puerto ${PORT}`);
+  });
+}
 
 module.exports = app;
