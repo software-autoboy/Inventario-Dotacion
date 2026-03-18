@@ -196,7 +196,7 @@ app.post('/api/movimientos', authenticateToken, async (req, res) => {
   }
 });
 
-app.get('/api/movimientos', authenticateToken, async (req, res) => {
+app.get('/movimientos', authenticateToken, async (req, res) => {
   try {
     const [rows] = await db.query(`
       SELECT m.*, a.nombre as articulo_nombre, e.nombre_completo as empleado_nombre 
