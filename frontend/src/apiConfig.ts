@@ -1,3 +1,3 @@
 // Configuración de la URL base del backend
-// En Vercel, la API estará en la misma URL bajo /api
-export const API_URL = import.meta.env.VITE_API_URL || '/api';
+const base_url = import.meta.env.VITE_API_URL || '';
+export const API_URL = base_url.endsWith('/') ? base_url.slice(0, -1) : base_url;
