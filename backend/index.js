@@ -45,7 +45,8 @@ app.get('/categorias', authenticateToken, async (req, res) => {
     const [rows] = await db.query('SELECT * FROM categorias');
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    res.status(500).json({ error: error.message, detail: 'Error en la base de datos' });
   }
 });
 
@@ -55,7 +56,8 @@ app.post('/categorias', authenticateToken, async (req, res) => {
     await db.query('INSERT INTO categorias (nombre) VALUES (?)', [nombre]);
     res.status(201).json({ message: 'Categoría creada' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    res.status(500).json({ error: error.message, detail: 'Error en la base de datos' });
   }
 });
 
@@ -69,7 +71,8 @@ app.get('/articulos', authenticateToken, async (req, res) => {
     `);
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    res.status(500).json({ error: error.message, detail: 'Error en la base de datos' });
   }
 });
 
@@ -82,7 +85,8 @@ app.post('/articulos', authenticateToken, async (req, res) => {
     );
     res.status(201).json({ message: 'Artículo creado' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    res.status(500).json({ error: error.message, detail: 'Error en la base de datos' });
   }
 });
 
@@ -96,7 +100,8 @@ app.put('/articulos/:id', authenticateToken, async (req, res) => {
     );
     res.status(200).json({ message: 'Artículo actualizado' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    res.status(500).json({ error: error.message, detail: 'Error en la base de datos' });
   }
 });
 
@@ -106,7 +111,8 @@ app.delete('/articulos/:id', authenticateToken, async (req, res) => {
     await db.query('DELETE FROM articulos WHERE id=?', [id]);
     res.status(200).json({ message: 'Artículo eliminado' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    res.status(500).json({ error: error.message, detail: 'Error en la base de datos' });
   }
 });
 
@@ -116,7 +122,8 @@ app.get('/empleados', authenticateToken, async (req, res) => {
     const [rows] = await db.query('SELECT * FROM empleados');
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    res.status(500).json({ error: error.message, detail: 'Error en la base de datos' });
   }
 });
 
@@ -129,7 +136,8 @@ app.post('/empleados', authenticateToken, async (req, res) => {
     );
     res.status(201).json({ message: 'Empleado creado' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    res.status(500).json({ error: error.message, detail: 'Error en la base de datos' });
   }
 });
 
@@ -186,7 +194,8 @@ app.get('/movimientos', authenticateToken, async (req, res) => {
     `);
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(error);
+    res.status(500).json({ error: error.message, detail: 'Error en la base de datos' });
   }
 });
 
