@@ -1,16 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { API_URL } from '../apiConfig';
 import { useAuth } from '../AuthContext';
-import { PlusCircle, ArrowDownCircle, ArrowUpCircle, RotateCcw } from 'lucide-react';
+import { PlusCircle, ArrowDownCircle, ArrowUpCircle, RotateCcw, Receipt, ShoppingCart } from 'lucide-react';
 
 interface Movement {
   id: number;
   articulo_nombre: string;
   empleado_nombre: string;
-  tipo: 'ENTRADA' | 'ENTREGA' | 'DEVOLUCION';
+  tipo: 'ENTRADA' | 'ENTREGA' | 'DEVOLUCION' | 'SALIDA';
   cantidad: number;
   fecha: string;
   observaciones: string;
+  codigo?: string;
+  sucursal?: string;
+  numero_factura?: string;
+  tercero?: string;
+  estado?: string;
+  valor_total?: number;
 }
 
 const Movimientos: React.FC = () => {
@@ -25,7 +31,13 @@ const Movimientos: React.FC = () => {
     empleado_id: '',
     tipo: 'ENTREGA',
     cantidad: 1,
-    observaciones: ''
+    observaciones: '',
+    codigo: '',
+    sucursal: '',
+    numero_factura: '',
+    tercero: '',
+    estado: 'Generada',
+    valor_total: 0
   });
 
   const fetchData = async () => {
@@ -53,6 +65,14 @@ const Movimientos: React.FC = () => {
 
   useEffect(() => { fetchData(); }, [token]);
 
+  // Calcular valor total automáticamente cuando cambia cantidad o artículo
+  useEffect(() => {
+    const art = articles.find(a => a.id === Number(formData.articulo_id));
+    if (art) {
+      setFormData(prev => ({ ...prev, valor_total: (art.valor || 0) * prev.cantidad }));
+    }
+  }, [formData.articulo_id, formData.cantidad, articles]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const res = await fetch(`${API_URL}/movimientos`, {
@@ -66,7 +86,10 @@ const Movimientos: React.FC = () => {
 
     if (res.ok) {
       setShowModal(false);
-      setFormData({ articulo_id: '', empleado_id: '', tipo: 'ENTREGA', cantidad: 1, observaciones: '' });
+      setFormData({ 
+        articulo_id: '', empleado_id: '', tipo: 'ENTREGA', cantidad: 1, observaciones: '',
+        codigo: '', sucursal: '', numero_factura: '', tercero: '', estado: 'Generada', valor_total: 0
+      });
       fetchData();
     } else {
       const error = await res.json();
@@ -79,121 +102,209 @@ const Movimientos: React.FC = () => {
       <header className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-slate-800 uppercase tracking-tight">Movimientos de Inventario</h1>
-          <p className="text-slate-500">Registro de entregas, entradas y devoluciones</p>
+          <p className="text-slate-500">Gestión de Entregas, Salidas y Stock</p>
         </div>
         <button 
           onClick={() => setShowModal(true)}
           className="flex items-center space-x-2 bg-slate-800 text-white px-4 py-2 rounded shadow-md hover:bg-slate-700 transition-colors font-bold uppercase"
         >
           <PlusCircle size={20} />
-          <span>Registrar Movimiento</span>
+          <span>Nuevo Movimiento</span>
         </button>
       </header>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-slate-100 border-b border-slate-200">
-              <th className="px-6 py-4 font-semibold text-slate-700 uppercase text-sm">Fecha</th>
-              <th className="px-6 py-4 font-semibold text-slate-700 uppercase text-sm">Tipo</th>
-              <th className="px-6 py-4 font-semibold text-slate-700 uppercase text-sm">Artículo</th>
-              <th className="px-6 py-4 font-semibold text-slate-700 uppercase text-sm text-center">Cant.</th>
-              <th className="px-6 py-4 font-semibold text-slate-700 uppercase text-sm">Empleado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {movements.map((mov) => (
-              <tr key={mov.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                <td className="px-6 py-4 text-xs font-mono text-slate-500">
-                  {new Date(mov.fecha).toLocaleString()}
-                </td>
-                <td className="px-6 py-4">
-                  <span className={`flex items-center space-x-1 text-xs font-bold uppercase ${
-                    mov.tipo === 'ENTREGA' ? 'text-red-600' : mov.tipo === 'ENTRADA' ? 'text-green-600' : 'text-blue-600'
-                  }`}>
-                    {mov.tipo === 'ENTREGA' ? <ArrowDownCircle size={14}/> : mov.tipo === 'ENTRADA' ? <ArrowUpCircle size={14}/> : <RotateCcw size={14}/>}
-                    <span>{mov.tipo}</span>
-                  </span>
-                </td>
-                <td className="px-6 py-4 font-medium text-slate-800">{mov.articulo_nombre}</td>
-                <td className="px-6 py-4 text-center font-bold text-slate-700">{mov.cantidad}</td>
-                <td className="px-6 py-4 text-slate-600 text-sm">{mov.empleado_nombre || '-'}</td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[1000px]">
+            <thead>
+              <tr className="bg-slate-100 border-b border-slate-200">
+                <th className="px-6 py-4 font-semibold text-slate-700 uppercase text-[10px] tracking-widest">Fecha / Ref</th>
+                <th className="px-6 py-4 font-semibold text-slate-700 uppercase text-[10px] tracking-widest">Tipo</th>
+                <th className="px-6 py-4 font-semibold text-slate-700 uppercase text-[10px] tracking-widest">Detalles</th>
+                <th className="px-6 py-4 font-semibold text-slate-700 uppercase text-[10px] tracking-widest text-center">Cant.</th>
+                <th className="px-6 py-4 font-semibold text-slate-700 uppercase text-[10px] tracking-widest text-right">Total</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {movements.map((mov) => (
+                <tr key={mov.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="text-xs font-mono text-slate-500">{new Date(mov.fecha).toLocaleDateString()}</div>
+                    <div className="text-[10px] font-bold text-blue-600 uppercase">{mov.codigo || mov.numero_factura || 'S/N'}</div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`flex items-center space-x-1 text-[10px] font-black uppercase ${
+                      mov.tipo === 'ENTREGA' ? 'text-orange-600' : mov.tipo === 'SALIDA' ? 'text-red-600' : 'text-emerald-600'
+                    }`}>
+                      {mov.tipo === 'ENTREGA' ? <ArrowDownCircle size={14}/> : mov.tipo === 'SALIDA' ? <Receipt size={14}/> : <ArrowUpCircle size={14}/>}
+                      <span>{mov.tipo}</span>
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="font-bold text-slate-800 text-sm uppercase">{mov.articulo_nombre}</div>
+                    <div className="text-[10px] text-slate-400">
+                      {mov.sucursal && <span>Suc: {mov.sucursal} | </span>}
+                      {mov.empleado_nombre ? `Recibe: ${mov.empleado_nombre}` : mov.tercero ? `Tercero: ${mov.tercero}` : '-'}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-center font-bold text-slate-700">{mov.cantidad}</td>
+                  <td className="px-6 py-4 text-right font-black text-slate-800">
+                    ${(mov.valor_total || 0).toLocaleString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {showModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg border border-slate-300 overflow-hidden">
-            <header className="bg-slate-800 text-white px-6 py-4">
-              <h2 className="text-xl font-bold uppercase tracking-widest">Nuevo Movimiento</h2>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl border border-slate-300 overflow-hidden">
+            <header className="bg-slate-800 text-white px-8 py-6">
+              <h2 className="text-2xl font-black uppercase tracking-widest">Registrar Movimiento</h2>
+              <p className="text-slate-400 text-xs mt-1">Seleccione el tipo de operación para continuar</p>
             </header>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit} className="p-8 space-y-6">
+              <div className="grid grid-cols-2 gap-6">
                 <div className="col-span-2">
-                  <label className="block text-sm font-bold text-slate-700 mb-1 uppercase tracking-tighter">Tipo de Movimiento</label>
-                  <select 
-                    className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-slate-800"
-                    value={formData.tipo}
-                    onChange={(e) => setFormData({...formData, tipo: e.target.value as any, empleado_id: e.target.value === 'ENTRADA' ? '' : formData.empleado_id})}
-                    required
-                  >
-                    <option value="ENTREGA">ENTREGA (SALIDA DE STOCK)</option>
-                    <option value="ENTRADA">ENTRADA (CARGA DE STOCK)</option>
-                    <option value="DEVOLUCION">DEVOLUCIÓN (RETORNO A STOCK)</option>
-                  </select>
+                  <label className="block text-xs font-black text-slate-400 mb-2 uppercase tracking-widest">Tipo de Operación</label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {['ENTREGA', 'SALIDA', 'ENTRADA', 'DEVOLUCION'].map(t => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setFormData({...formData, tipo: t as any, empleado_id: '', tercero: '', numero_factura: '', codigo: ''})}
+                        className={`py-3 rounded-xl text-[10px] font-black transition-all ${
+                          formData.tipo === t ? 'bg-slate-800 text-white shadow-lg' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="col-span-2">
-                  <label className="block text-sm font-bold text-slate-700 mb-1 uppercase tracking-tighter">Artículo</label>
+
+                <div className="col-span-2 md:col-span-1">
+                  <label className="block text-xs font-black text-slate-400 mb-2 uppercase tracking-widest">Artículo</label>
                   <select 
-                    className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-slate-800"
+                    className="w-full p-4 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-slate-800 font-bold text-slate-800"
                     value={formData.articulo_id}
                     onChange={(e) => setFormData({...formData, articulo_id: e.target.value})}
                     required
                   >
-                    <option value="">Seleccione artículo...</option>
-                    {articles.map(a => <option key={a.id} value={a.id}>{a.nombre} (Stock: {a.stock_actual})</option>)}
+                    <option value="">Seleccione...</option>
+                    {articles.map(a => <option key={a.id} value={a.id}>{a.nombre} (${(a.valor || 0).toLocaleString()})</option>)}
                   </select>
                 </div>
-                {formData.tipo !== 'ENTRADA' && (
-                  <div className="col-span-2">
-                    <label className="block text-sm font-bold text-slate-700 mb-1 uppercase tracking-tighter">Empleado</label>
-                    <select 
-                      className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-slate-800"
-                      value={formData.empleado_id}
-                      onChange={(e) => setFormData({...formData, empleado_id: e.target.value})}
-                      required
-                    >
-                      <option value="">Seleccione empleado...</option>
-                      {employees.map(e => <option key={e.id} value={e.id}>{e.nombre_completo}</option>)}
-                    </select>
-                  </div>
-                )}
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1 uppercase tracking-tighter">Cantidad</label>
+
+                <div className="col-span-2 md:col-span-1">
+                  <label className="block text-xs font-black text-slate-400 mb-2 uppercase tracking-widest">Cantidad</label>
                   <input 
                     type="number"
                     min="1"
-                    className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-slate-800"
+                    className="w-full p-4 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-slate-800 font-bold text-slate-800"
                     value={formData.cantidad}
                     onChange={(e) => setFormData({...formData, cantidad: parseInt(e.target.value) || 1})}
                     required
                   />
                 </div>
+
+                {/* CAMPOS ESPECÍFICOS PARA ENTREGA */}
+                {formData.tipo === 'ENTREGA' && (
+                  <>
+                    <div className="col-span-2 md:col-span-1">
+                      <label className="block text-xs font-black text-slate-400 mb-2 uppercase tracking-widest">Código de Entrega</label>
+                      <input 
+                        className="w-full p-4 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-slate-800 font-bold text-slate-800"
+                        placeholder="E-001"
+                        value={formData.codigo}
+                        onChange={(e) => setFormData({...formData, codigo: e.target.value})}
+                        required
+                      />
+                    </div>
+                    <div className="col-span-2 md:col-span-1">
+                      <label className="block text-xs font-black text-slate-400 mb-2 uppercase tracking-widest">Sucursal</label>
+                      <input 
+                        className="w-full p-4 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-slate-800 font-bold text-slate-800"
+                        placeholder="Norte, Sur, Central..."
+                        value={formData.sucursal}
+                        onChange={(e) => setFormData({...formData, sucursal: e.target.value})}
+                        required
+                      />
+                    </div>
+                    <div className="col-span-2 md:col-span-1">
+                      <label className="block text-xs font-black text-slate-400 mb-2 uppercase tracking-widest">Recibe (Empleado)</label>
+                      <select 
+                        className="w-full p-4 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-slate-800 font-bold text-slate-800"
+                        value={formData.empleado_id}
+                        onChange={(e) => setFormData({...formData, empleado_id: e.target.value})}
+                        required
+                      >
+                        <option value="">Seleccione...</option>
+                        {employees.map(e => <option key={e.id} value={e.id}>{e.nombre_completo}</option>)}
+                      </select>
+                    </div>
+                    <div className="col-span-2 md:col-span-1">
+                      <label className="block text-xs font-black text-slate-400 mb-2 uppercase tracking-widest">Estado</label>
+                      <select 
+                        className="w-full p-4 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-slate-800 font-bold text-slate-800"
+                        value={formData.estado}
+                        onChange={(e) => setFormData({...formData, estado: e.target.value})}
+                      >
+                        <option value="Generada">Generada</option>
+                        <option value="No Generada">No Generada</option>
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                {/* CAMPOS ESPECÍFICOS PARA SALIDA */}
+                {formData.tipo === 'SALIDA' && (
+                  <>
+                    <div className="col-span-2 md:col-span-1">
+                      <label className="block text-xs font-black text-slate-400 mb-2 uppercase tracking-widest">N° Factura</label>
+                      <input 
+                        className="w-full p-4 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-slate-800 font-bold text-slate-800"
+                        placeholder="FAC-123"
+                        value={formData.numero_factura}
+                        onChange={(e) => setFormData({...formData, numero_factura: e.target.value})}
+                        required
+                      />
+                    </div>
+                    <div className="col-span-2 md:col-span-1">
+                      <label className="block text-xs font-black text-slate-400 mb-2 uppercase tracking-widest">Sucursal</label>
+                      <input 
+                        className="w-full p-4 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-slate-800 font-bold text-slate-800"
+                        placeholder="Sede Principal..."
+                        value={formData.sucursal}
+                        onChange={(e) => setFormData({...formData, sucursal: e.target.value})}
+                        required
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-xs font-black text-slate-400 mb-2 uppercase tracking-widest">Tercero / Cliente</label>
+                      <input 
+                        className="w-full p-4 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-slate-800 font-bold text-slate-800"
+                        placeholder="Nombre de la empresa o cliente"
+                        value={formData.tercero}
+                        onChange={(e) => setFormData({...formData, tercero: e.target.value})}
+                        required
+                      />
+                    </div>
+                  </>
+                )}
+
                 <div className="col-span-2">
-                  <label className="block text-sm font-bold text-slate-700 mb-1 uppercase tracking-tighter">Observaciones</label>
-                  <textarea 
-                    className="w-full p-2 border border-slate-300 rounded focus:ring-2 focus:ring-slate-800"
-                    value={formData.observaciones}
-                    onChange={(e) => setFormData({...formData, observaciones: e.target.value})}
-                  />
+                  <div className="bg-slate-900 p-6 rounded-2xl flex justify-between items-center text-white">
+                    <span className="text-xs font-black uppercase tracking-widest text-slate-400">Total Movimiento</span>
+                    <span className="text-2xl font-black">${formData.valor_total.toLocaleString()}</span>
+                  </div>
                 </div>
               </div>
-              <footer className="flex justify-end space-x-3 pt-6 border-t border-slate-100">
-                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-slate-600 font-bold uppercase">Cancelar</button>
-                <button type="submit" className="px-4 py-2 bg-slate-800 text-white rounded font-bold hover:bg-slate-700 uppercase shadow-lg">Registrar</button>
+              <footer className="flex justify-end space-x-4 pt-6">
+                <button type="button" onClick={() => setShowModal(false)} className="px-6 py-4 text-slate-400 font-black uppercase text-[10px] tracking-widest">Cancelar</button>
+                <button type="submit" className="px-10 py-4 bg-slate-800 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-700 shadow-xl transition-all active:scale-95">Registrar Operación</button>
               </footer>
             </form>
           </div>

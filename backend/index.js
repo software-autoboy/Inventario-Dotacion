@@ -119,7 +119,13 @@ app.post('/empleados', authenticateToken, async (req, res) => {
 // --- MOVIMIENTOS ---
 app.get('/movimientos', authenticateToken, async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT m.*, a.nombre as articulo_nombre, e.nombre_completo as empleado_nombre FROM movimientos m JOIN articulos a ON m.articulo_id = a.id LEFT JOIN empleados e ON m.empleado_id = e.id ORDER BY m.fecha DESC');
+    const [rows] = await db.query(`
+      SELECT m.*, a.nombre as articulo_nombre, a.valor as articulo_valor, e.nombre_completo as empleado_nombre 
+      FROM movimientos m 
+      JOIN articulos a ON m.articulo_id = a.id 
+      LEFT JOIN empleados e ON m.empleado_id = e.id 
+      ORDER BY m.fecha DESC
+    `);
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -127,23 +133,27 @@ app.get('/movimientos', authenticateToken, async (req, res) => {
 });
 
 app.post('/movimientos', authenticateToken, async (req, res) => {
-  let { articulo_id, empleado_id, tipo, cantidad, observaciones } = req.body;
+  let { 
+    articulo_id, empleado_id, tipo, cantidad, observaciones, 
+    codigo, sucursal, numero_factura, tercero, estado, valor_total 
+  } = req.body;
+  
   articulo_id = Number(articulo_id);
   cantidad = Number(cantidad);
-
-  if (tipo === 'ENTRADA') {
-    empleado_id = null;
-  } else if (!empleado_id) {
-    return res.status(400).json({ error: 'empleado_id es obligatorio' });
-  }
 
   const connection = await db.getConnection();
   try {
     await connection.beginTransaction();
 
-    if (tipo === 'ENTREGA') {
-      const [artRows] = await connection.query('SELECT stock_actual, nombre FROM articulos WHERE id = ?', [articulo_id]);
-      if (artRows.length === 0) throw new Error('Artículo no encontrado');
+    // 1. Obtener datos del artículo para el stock y el valor
+    const [artRows] = await connection.query('SELECT stock_actual, nombre, valor FROM articulos WHERE id = ?', [articulo_id]);
+    if (artRows.length === 0) throw new Error('Artículo no encontrado');
+    
+    const valorUnitario = artRows[0].valor || 0;
+    const totalCalculado = valor_total || (valorUnitario * cantidad);
+
+    // 2. Validar stock para salidas/entregas
+    if (tipo === 'ENTREGA' || tipo === 'SALIDA') {
       if (artRows[0].stock_actual < cantidad) {
         return res.status(400).json({ error: `Stock insuficiente para ${artRows[0].nombre}` });
       }
@@ -152,7 +162,18 @@ app.post('/movimientos', authenticateToken, async (req, res) => {
       await connection.query('UPDATE articulos SET stock_actual = stock_actual + ? WHERE id = ?', [cantidad, articulo_id]);
     }
 
-    await connection.query('INSERT INTO movimientos (articulo_id, empleado_id, tipo, cantidad, observaciones) VALUES (?, ?, ?, ?, ?)', [articulo_id, empleado_id, tipo, cantidad, observaciones]);
+    // 3. Insertar movimiento con nuevos campos
+    const query = `
+      INSERT INTO movimientos 
+      (articulo_id, empleado_id, tipo, cantidad, observaciones, codigo, sucursal, numero_factura, tercero, estado, valor_total) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    const params = [
+      articulo_id, empleado_id || null, tipo, cantidad, observaciones, 
+      codigo || null, sucursal || null, numero_factura || null, tercero || null, estado || null, totalCalculado
+    ];
+
+    await connection.query(query, params);
     await connection.commit();
     res.status(201).json({ message: 'Movimiento registrado' });
   } catch (error) {

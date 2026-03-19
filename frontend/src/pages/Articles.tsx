@@ -63,6 +63,7 @@ const Articles: React.FC = () => {
   // Cálculos para el resumen
   const totalStock = articles.reduce((acc, art) => acc + art.stock_actual, 0);
   const lowStockItems = articles.filter(art => art.stock_actual <= 5).length;
+  const totalInvestment = articles.reduce((acc, art) => acc + ((art.valor || 0) * art.stock_actual), 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,7 +118,7 @@ const Articles: React.FC = () => {
       'Talla': art.talla,
       'Stock Actual': art.stock_actual,
       'Valor Unitario': art.valor,
-      'Valor Total': art.valor * art.stock_actual
+      'Valor Total': (art.valor || 0) * art.stock_actual
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
@@ -152,14 +153,14 @@ const Articles: React.FC = () => {
       </header>
 
       {/* Tarjetas de Resumen de Stock */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-center space-x-4">
           <div className="bg-blue-100 p-3 rounded-2xl text-blue-600">
             <Package size={24} />
           </div>
           <div>
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Prendas</p>
-            <p className="text-2xl font-black text-slate-800">{totalStock} Unidades</p>
+            <p className="text-2xl font-black text-slate-800">{totalStock}</p>
           </div>
         </div>
         <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-center space-x-4">
@@ -167,17 +168,26 @@ const Articles: React.FC = () => {
             <PackagePlus size={24} />
           </div>
           <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tipos de Artículos</p>
-            <p className="text-2xl font-black text-slate-800">{articles.length} Categorías</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Inversión Total</p>
+            <p className="text-2xl font-black text-slate-800">${totalInvestment.toLocaleString()}</p>
           </div>
         </div>
         <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-center space-x-4">
-          <div className="bg-rose-100 p-3 rounded-2xl text-rose-600">
+          <div className="bg-amber-100 p-3 rounded-2xl text-amber-600">
             <AlertTriangle size={24} />
           </div>
           <div>
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Stock Crítico</p>
-            <p className="text-2xl font-black text-slate-800">{lowStockItems} Por Agotarse</p>
+            <p className="text-2xl font-black text-slate-800">{lowStockItems}</p>
+          </div>
+        </div>
+        <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-center space-x-4">
+          <div className="bg-indigo-100 p-3 rounded-2xl text-indigo-600">
+            <PackagePlus size={24} />
+          </div>
+          <div>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tipos</p>
+            <p className="text-2xl font-black text-slate-800">{articles.length}</p>
           </div>
         </div>
       </div>
@@ -190,7 +200,8 @@ const Articles: React.FC = () => {
                 <th className="px-8 py-5 font-bold text-slate-400 uppercase text-[11px] tracking-widest">Artículo / Talla</th>
                 <th className="px-8 py-5 font-bold text-slate-400 uppercase text-[11px] tracking-widest">Categoría</th>
                 <th className="px-8 py-5 font-bold text-slate-400 uppercase text-[11px] tracking-widest text-center">Stock Actual</th>
-                <th className="px-8 py-5 font-bold text-slate-400 uppercase text-[11px] tracking-widest text-center">Valor</th>
+                <th className="px-8 py-5 font-bold text-slate-400 uppercase text-[11px] tracking-widest text-center">V. Unitario</th>
+                <th className="px-8 py-5 font-bold text-slate-400 uppercase text-[11px] tracking-widest text-center">V. Total</th>
                 <th className="px-8 py-5 font-bold text-slate-400 uppercase text-[11px] tracking-widest text-center">Estado</th>
                 <th className="px-8 py-5 font-bold text-slate-400 uppercase text-[11px] tracking-widest text-right">Acciones</th>
               </tr>
@@ -220,6 +231,9 @@ const Articles: React.FC = () => {
                   </td>
                   <td className="px-8 py-5 text-center">
                     <div className="text-lg font-bold text-slate-700">${(art.valor || 0).toLocaleString()}</div>
+                  </td>
+                  <td className="px-8 py-5 text-center">
+                    <div className="text-lg font-black text-blue-600">${((art.valor || 0) * art.stock_actual).toLocaleString()}</div>
                   </td>
                   <td className="px-8 py-5 text-center">
                     <span className={`inline-flex items-center px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest ${
