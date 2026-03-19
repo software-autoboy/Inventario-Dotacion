@@ -1,31 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { API_URL } from '../apiConfig';
 import { useAuth } from '../AuthContext';
-import { Plus, Users, Search, MapPin, Briefcase } from 'lucide-react';
-import GeneratePdf from '../components/GeneratePdf';
-
-interface Employee {
-  id: number;
-  documento: string;
-  nombre_completo: string;
-  cargo: string;
-  area: string;
-}
-
-interface Movement {
-  id: number;
-  articulo_id: number;
-  articulo_nombre: string;
-  empleado_id: number;
-  tipo: string;
-  cantidad: number;
-  fecha: string;
-  talla: string;
-}
-
-import React, { useEffect, useState } from 'react';
-import { API_URL } from '../apiConfig';
-import { useAuth } from '../AuthContext';
 import { Plus, Users, Search, MapPin, Briefcase, Trash2 } from 'lucide-react';
 import GeneratePdf from '../components/GeneratePdf';
 
