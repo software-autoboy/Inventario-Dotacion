@@ -68,17 +68,17 @@ app.get('/articulos', authenticateToken, async (req, res) => {
 app.post('/articulos', authenticateToken, async (req, res) => {
   const { 
     nombre, descripcion, categoria_id, stock_actual, talla, valor,
-    fecha_factura, quien_genero, numero_factura, orden_compra, sucursal 
+    fecha_factura, quien_genero, numero_factura, orden_compra, sucursal, observaciones
   } = req.body;
   try {
     const query = `
       INSERT INTO articulos 
-      (nombre, descripcion, categoria_id, stock_actual, talla, valor, fecha_factura, quien_genero, numero_factura, orden_compra, sucursal) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (nombre, descripcion, categoria_id, stock_actual, talla, valor, fecha_factura, quien_genero, numero_factura, orden_compra, sucursal, observaciones) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
       nombre, descripcion, categoria_id, stock_actual || 0, talla, valor || 0,
-      fecha_factura || null, quien_genero || null, numero_factura || null, orden_compra || null, sucursal || null
+      fecha_factura || null, quien_genero || null, numero_factura || null, orden_compra || null, sucursal || null, observaciones || null
     ];
     await db.query(query, params);
     res.status(201).json({ message: 'Artículo creado' });
@@ -91,18 +91,18 @@ app.put('/articulos/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { 
     nombre, descripcion, categoria_id, stock_actual, talla, valor,
-    fecha_factura, quien_genero, numero_factura, orden_compra, sucursal 
+    fecha_factura, quien_genero, numero_factura, orden_compra, sucursal, observaciones
   } = req.body;
   try {
     const query = `
       UPDATE articulos SET 
       nombre=?, descripcion=?, categoria_id=?, stock_actual=?, talla=?, valor=?, 
-      fecha_factura=?, quien_genero=?, numero_factura=?, orden_compra=?, sucursal=? 
+      fecha_factura=?, quien_genero=?, numero_factura=?, orden_compra=?, sucursal=?, observaciones=? 
       WHERE id=?
     `;
     const params = [
       nombre, descripcion, categoria_id, stock_actual, talla, valor || 0,
-      fecha_factura || null, quien_genero || null, numero_factura || null, orden_compra || null, sucursal || null, id
+      fecha_factura || null, quien_genero || null, numero_factura || null, orden_compra || null, sucursal || null, observaciones || null, id
     ];
     await db.query(query, params);
     res.status(200).json({ message: 'Artículo actualizado' });

@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../AuthContext';
 import { API_URL } from '../apiConfig';
-import { Plus, Trash2, Edit2, Package, PackagePlus, AlertTriangle, Download } from 'lucide-react';
+import { Plus, Trash2, Edit2, Package, PackagePlus, AlertTriangle, Download, FileText } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
 
 interface Article {
   id: number;
@@ -19,6 +21,7 @@ interface Article {
   numero_factura?: string;
   orden_compra?: string;
   sucursal?: string;
+  observaciones?: string;
 }
 
 interface Category {
@@ -35,7 +38,7 @@ const Articles: React.FC = () => {
 
   const [formData, setFormData] = useState({
     nombre: '', descripcion: '', categoria_id: '', stock_actual: 0, talla: '', valor: 0,
-    fecha_factura: '', quien_genero: '', numero_factura: '', orden_compra: '', sucursal: ''
+    fecha_factura: '', quien_genero: '', numero_factura: '', orden_compra: '', sucursal: '', observaciones: ''
   });
 
   const fetchArticles = async () => {
@@ -93,7 +96,7 @@ const Articles: React.FC = () => {
     setEditingArticle(null);
     setFormData({ 
       nombre: '', descripcion: '', categoria_id: '', stock_actual: 0, talla: '', valor: 0,
-      fecha_factura: '', quien_genero: '', numero_factura: '', orden_compra: '', sucursal: ''
+      fecha_factura: '', quien_genero: '', numero_factura: '', orden_compra: '', sucursal: '', observaciones: ''
     });
     fetchArticles();
   };
@@ -120,7 +123,8 @@ const Articles: React.FC = () => {
       quien_genero: article.quien_genero || '',
       numero_factura: article.numero_factura || '',
       orden_compra: article.orden_compra || '',
-      sucursal: article.sucursal || ''
+      sucursal: article.sucursal || '',
+      observaciones: article.observaciones || ''
     });
     setShowModal(true);
   };
@@ -162,38 +166,92 @@ const Articles: React.FC = () => {
     saveAs(new Blob([buffer]), `AUTOBOY_Inventario_General.xlsx`);
   };
 
-  const exportSingleToExcel = async (art: Article) => {
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Detalle Artículo');
+  const generatePDF = (art: Article) => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
 
-    const titleRow = worksheet.addRow(['AUTOBOY - FICHA TÉCNICA DE ARTÍCULO']);
-    titleRow.font = { name: 'Arial Black', size: 14, color: { argb: 'FFFFFFFF' } };
-    titleRow.alignment = { vertical: 'middle', horizontal: 'center' };
-    worksheet.mergeCells('A1:D1');
-    titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } };
-
-    worksheet.addRow([]);
-    worksheet.addRow(['INFORMACIÓN GENERAL']).font = { bold: true };
-    worksheet.addRow(['Nombre:', art.nombre.toUpperCase()]);
-    worksheet.addRow(['Categoría:', art.categoria_nombre]);
-    worksheet.addRow(['Talla:', art.talla || 'S/T']);
-    worksheet.addRow(['Stock Actual:', art.stock_actual]);
-    worksheet.addRow(['Valor Unitario:', art.valor]).getCell(2).numFmt = '"$"#,##0';
-    worksheet.addRow(['Valor Total Inventario:', art.valor * art.stock_actual]).getCell(2).numFmt = '"$"#,##0';
+    // Título Principal (Izquierda)
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(22);
+    doc.setTextColor(30, 41, 59); // Slate 800
+    doc.text("AUTOBOY", 15, 20);
     
-    worksheet.addRow([]);
-    worksheet.addRow(['INFORMACIÓN DE COMPRA / SOPORTE']).font = { bold: true };
-    worksheet.addRow(['Sucursal:', art.sucursal || 'N/A']);
-    worksheet.addRow(['N° Factura:', art.numero_factura || 'N/A']);
-    worksheet.addRow(['Fecha Factura:', art.fecha_factura || 'N/A']);
-    worksheet.addRow(['Orden de Compra:', art.orden_compra || 'N/A']);
-    worksheet.addRow(['Responsable:', art.quien_genero || 'N/A']);
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text("SISTEMA DE GESTIÓN DE INVENTARIOS", 15, 26);
 
-    worksheet.getColumn(1).width = 25;
-    worksheet.getColumn(2).width = 40;
+    // Bloque de información (Derecha)
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    const rightX = pageWidth - 15;
+    
+    let currentY = 20;
+    const info = [
+      { label: "ORDEN DE COMPRA:", value: art.orden_compra || 'N/A' },
+      { label: "NRO. FACTURA:", value: art.numero_factura || 'N/A' },
+      { label: "FECHA FACTURA:", value: art.fecha_factura || 'N/A' },
+      { label: "GENERADO POR:", value: art.quien_genero || 'N/A' },
+      { label: "FECHA CREACIÓN PDF:", value: new Date().toLocaleDateString() },
+      { label: "SUCURSAL:", value: art.sucursal || 'N/A' }
+    ];
 
-    const buffer = await workbook.xlsx.writeBuffer();
-    saveAs(new Blob([buffer]), `AUTOBOY_Articulo_${art.nombre.replace(/ /g, '_')}.xlsx`);
+    info.forEach(item => {
+      doc.setFont("helvetica", "bold");
+      const labelWidth = doc.getTextWidth(item.label);
+      doc.text(item.label, rightX - labelWidth - doc.getTextWidth(String(item.value)) - 2, currentY);
+      doc.setFont("helvetica", "normal");
+      doc.text(String(item.value), rightX - doc.getTextWidth(String(item.value)), currentY);
+      currentY += 5;
+    });
+
+    // Separador
+    doc.setDrawColor(226, 232, 240);
+    doc.line(15, 55, pageWidth - 15, 55);
+
+    // Título del reporte
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text("FICHA TÉCNICA DEL PRODUCTO", 15, 65);
+
+    // Tabla de Contenido
+    (doc as any).autoTable({
+      startY: 75,
+      head: [['COD', 'PRODUCTO', 'CANTIDAD', 'VALOR UNIT.', 'VALOR TOTAL']],
+      body: [
+        [
+          art.id,
+          `${art.nombre.toUpperCase()} (TALLA: ${art.talla || 'S/T'})`,
+          art.stock_actual,
+          `$${art.valor.toLocaleString()}`,
+          `$${(art.valor * art.stock_actual).toLocaleString()}`
+        ]
+      ],
+      headStyles: { fillColor: [37, 99, 235], fontSize: 10, halign: 'center' },
+      columnStyles: {
+        0: { halign: 'center', cellWidth: 20 },
+        2: { halign: 'center', cellWidth: 30 },
+        3: { halign: 'right', cellWidth: 40 },
+        4: { halign: 'right', cellWidth: 40 },
+      },
+      styles: { fontSize: 10, cellPadding: 5 }
+    });
+
+    // Observaciones
+    const finalY = (doc as any).lastAutoTable.finalY + 15;
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.text("OBSERVACIONES:", 15, finalY);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    const splitObs = doc.splitTextToSize(art.observaciones || "Sin observaciones adicionales.", pageWidth - 30);
+    doc.text(splitObs, 15, finalY + 7);
+
+    // Firma (Pie de página)
+    doc.line(15, 260, 80, 260);
+    doc.text("Firma de Responsable", 15, 265);
+
+    doc.save(`AUTOBOY_Articulo_${art.id}.pdf`);
   };
 
   return (
@@ -216,7 +274,7 @@ const Articles: React.FC = () => {
               setEditingArticle(null); 
               setFormData({ 
                 nombre: '', descripcion: '', categoria_id: '', stock_actual: 0, talla: '', valor: 0,
-                fecha_factura: '', quien_genero: '', numero_factura: '', orden_compra: '', sucursal: ''
+                fecha_factura: '', quien_genero: '', numero_factura: '', orden_compra: '', sucursal: '', observaciones: ''
               }); 
               setShowModal(true); 
             }}
@@ -278,7 +336,7 @@ const Articles: React.FC = () => {
                   <td className="px-8 py-5 text-center"><div className="text-lg font-black text-blue-600">${((art.valor || 0) * art.stock_actual).toLocaleString()}</div></td>
                   <td className="px-8 py-5 text-right">
                     <div className="flex justify-end space-x-2">
-                      <button onClick={() => exportSingleToExcel(art)} title="Descargar Excel" className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all shadow-sm bg-white border border-slate-100"><Download size={18} /></button>
+                      <button onClick={() => generatePDF(art)} title="Descargar PDF" className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all shadow-sm bg-white border border-slate-100"><FileText size={18} /></button>
                       <button onClick={() => handleEdit(art)} title="Editar" className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all shadow-sm bg-white border border-slate-100"><Edit2 size={18} /></button>
                       <button onClick={() => handleDelete(art.id)} title="Eliminar" className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all shadow-sm bg-white border border-slate-100"><Trash2 size={18} /></button>
                     </div>
@@ -343,6 +401,16 @@ const Articles: React.FC = () => {
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Responsable</label>
                   <input className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 font-bold text-slate-800" value={formData.quien_genero} onChange={(e) => setFormData({...formData, quien_genero: e.target.value})} />
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Observaciones</label>
+                  <textarea 
+                    className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 font-bold text-slate-800" 
+                    rows={3} 
+                    value={formData.observaciones} 
+                    onChange={(e) => setFormData({...formData, observaciones: e.target.value})} 
+                  />
                 </div>
 
                 {!editingArticle && (
