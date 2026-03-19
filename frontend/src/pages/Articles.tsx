@@ -14,6 +14,11 @@ interface Article {
   stock_actual: number;
   talla: string;
   valor: number;
+  fecha_factura?: string;
+  quien_genero?: string;
+  numero_factura?: string;
+  orden_compra?: string;
+  sucursal?: string;
 }
 
 interface Category {
@@ -29,7 +34,8 @@ const Articles: React.FC = () => {
   const { token } = useAuth();
 
   const [formData, setFormData] = useState({
-    nombre: '', descripcion: '', categoria_id: '', stock_actual: 0, talla: '', valor: 0
+    nombre: '', descripcion: '', categoria_id: '', stock_actual: 0, talla: '', valor: 0,
+    fecha_factura: '', quien_genero: '', numero_factura: '', orden_compra: '', sucursal: ''
   });
 
   const fetchArticles = async () => {
@@ -85,7 +91,10 @@ const Articles: React.FC = () => {
     
     setShowModal(false);
     setEditingArticle(null);
-    setFormData({ nombre: '', descripcion: '', categoria_id: '', stock_actual: 0, talla: '', valor: 0 });
+    setFormData({ 
+      nombre: '', descripcion: '', categoria_id: '', stock_actual: 0, talla: '', valor: 0,
+      fecha_factura: '', quien_genero: '', numero_factura: '', orden_compra: '', sucursal: ''
+    });
     fetchArticles();
   };
 
@@ -106,7 +115,12 @@ const Articles: React.FC = () => {
       categoria_id: article.categoria_id?.toString() || '',
       stock_actual: article.stock_actual,
       talla: article.talla || '',
-      valor: article.valor || 0
+      valor: article.valor || 0,
+      fecha_factura: article.fecha_factura || '',
+      quien_genero: article.quien_genero || '',
+      numero_factura: article.numero_factura || '',
+      orden_compra: article.orden_compra || '',
+      sucursal: article.sucursal || ''
     });
     setShowModal(true);
   };
@@ -218,7 +232,14 @@ const Articles: React.FC = () => {
             <span>Descargar Excel</span>
           </button>
           <button 
-            onClick={() => { setEditingArticle(null); setFormData({ nombre: '', descripcion: '', categoria_id: '', stock_actual: 0, talla: '', valor: 0 }); setShowModal(true); }}
+            onClick={() => { 
+              setEditingArticle(null); 
+              setFormData({ 
+                nombre: '', descripcion: '', categoria_id: '', stock_actual: 0, talla: '', valor: 0,
+                fecha_factura: '', quien_genero: '', numero_factura: '', orden_compra: '', sucursal: ''
+              }); 
+              setShowModal(true); 
+            }}
             className="flex items-center justify-center space-x-2 bg-blue-600 text-white px-6 py-3 rounded-2xl shadow-lg shadow-blue-100 hover:bg-blue-700 hover:-translate-y-0.5 transition-all active:scale-95 font-bold uppercase tracking-wide text-sm"
           >
             <Plus size={20} />
@@ -394,8 +415,56 @@ const Articles: React.FC = () => {
                     required
                   />
                 </div>
+                <div>
+                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Sucursal</label>
+                  <input 
+                    className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-slate-800"
+                    placeholder="Ej. Sede Norte"
+                    value={formData.sucursal}
+                    onChange={(e) => setFormData({...formData, sucursal: e.target.value})}
+                  />
+                </div>
+                <div className="col-span-2">
+                  <h3 className="text-xs font-black text-blue-600 uppercase tracking-widest border-b border-blue-50 pb-2 mb-4 mt-2">Información de Compra / Factura</h3>
+                </div>
+                <div>
+                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Fecha Factura</label>
+                  <input 
+                    type="date"
+                    className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-slate-800"
+                    value={formData.fecha_factura}
+                    onChange={(e) => setFormData({...formData, fecha_factura: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Número Factura</label>
+                  <input 
+                    className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-slate-800"
+                    placeholder="FAC-000"
+                    value={formData.numero_factura}
+                    onChange={(e) => setFormData({...formData, numero_factura: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Orden de Compra</label>
+                  <input 
+                    className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-slate-800"
+                    placeholder="OC-000"
+                    value={formData.orden_compra}
+                    onChange={(e) => setFormData({...formData, orden_compra: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Generado Por</label>
+                  <input 
+                    className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-slate-800"
+                    placeholder="Nombre responsable"
+                    value={formData.quien_genero}
+                    onChange={(e) => setFormData({...formData, quien_genero: e.target.value})}
+                  />
+                </div>
                 {!editingArticle && (
-                  <div>
+                  <div className="col-span-2">
                     <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Cantidad Inicial</label>
                     <input 
                       type="number"

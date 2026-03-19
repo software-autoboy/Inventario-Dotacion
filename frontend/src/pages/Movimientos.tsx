@@ -6,8 +6,9 @@ import { PlusCircle, ArrowDownCircle, ArrowUpCircle, Receipt } from 'lucide-reac
 interface Movement {
   id: number;
   articulo_nombre: string;
+  articulo_talla?: string;
   empleado_nombre: string;
-  tipo: 'ENTRADA' | 'ENTREGA' | 'DEVOLUCION' | 'SALIDA';
+  tipo: 'ENTREGA' | 'SALIDA';
   cantidad: number;
   fecha: string;
   observaciones: string;
@@ -102,7 +103,7 @@ const Movimientos: React.FC = () => {
       <header className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-slate-800 uppercase tracking-tight">Movimientos de Inventario</h1>
-          <p className="text-slate-500">Gestión de Entregas, Salidas y Stock</p>
+          <p className="text-slate-500">Gestión de Entregas y Salidas</p>
         </div>
         <button 
           onClick={() => setShowModal(true)}
@@ -134,14 +135,16 @@ const Movimientos: React.FC = () => {
                   </td>
                   <td className="px-6 py-4">
                     <span className={`flex items-center space-x-1 text-[10px] font-black uppercase ${
-                      mov.tipo === 'ENTREGA' ? 'text-orange-600' : mov.tipo === 'SALIDA' ? 'text-red-600' : 'text-emerald-600'
+                      mov.tipo === 'ENTREGA' ? 'text-orange-600' : 'text-red-600'
                     }`}>
-                      {mov.tipo === 'ENTREGA' ? <ArrowDownCircle size={14}/> : mov.tipo === 'SALIDA' ? <Receipt size={14}/> : <ArrowUpCircle size={14}/>}
+                      {mov.tipo === 'ENTREGA' ? <ArrowDownCircle size={14}/> : <Receipt size={14}/>}
                       <span>{mov.tipo}</span>
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="font-bold text-slate-800 text-sm uppercase">{mov.articulo_nombre}</div>
+                    <div className="font-bold text-slate-800 text-sm uppercase">
+                      {mov.articulo_nombre} {mov.articulo_talla && <span className="text-blue-600 text-xs ml-1">[{mov.articulo_talla}]</span>}
+                    </div>
                     <div className="text-[10px] text-slate-400">
                       {mov.sucursal && <span>Suc: {mov.sucursal} | </span>}
                       {mov.empleado_nombre ? `Recibe: ${mov.empleado_nombre}` : mov.tercero ? `Tercero: ${mov.tercero}` : '-'}
@@ -169,8 +172,8 @@ const Movimientos: React.FC = () => {
               <div className="grid grid-cols-2 gap-6">
                 <div className="col-span-2">
                   <label className="block text-xs font-black text-slate-400 mb-2 uppercase tracking-widest">Tipo de Operación</label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {['ENTREGA', 'SALIDA', 'ENTRADA', 'DEVOLUCION'].map(t => (
+                  <div className="grid grid-cols-2 gap-2">
+                    {['ENTREGA', 'SALIDA'].map(t => (
                       <button
                         key={t}
                         type="button"
@@ -179,22 +182,22 @@ const Movimientos: React.FC = () => {
                           formData.tipo === t ? 'bg-slate-800 text-white shadow-lg' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
                         }`}
                       >
-                        {t}
+                        {t === 'ENTREGA' ? 'ENTREGA DE DOTACIÓN' : 'SALIDA POR FACTURA'}
                       </button>
                     ))}
                   </div>
                 </div>
 
                 <div className="col-span-2 md:col-span-1">
-                  <label className="block text-xs font-black text-slate-400 mb-2 uppercase tracking-widest">Artículo</label>
+                  <label className="block text-xs font-black text-slate-400 mb-2 uppercase tracking-widest">Artículo / Prenda</label>
                   <select 
                     className="w-full p-4 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-slate-800 font-bold text-slate-800"
                     value={formData.articulo_id}
                     onChange={(e) => setFormData({...formData, articulo_id: e.target.value})}
                     required
                   >
-                    <option value="">Seleccione...</option>
-                    {articles.map(a => <option key={a.id} value={a.id}>{a.nombre} (${(a.valor || 0).toLocaleString()})</option>)}
+                    <option value="">Seleccione artículo...</option>
+                    {articles.map(a => <option key={a.id} value={a.id}>{a.nombre} - Talla: {a.talla || 'S/T'} (Stock: {a.stock_actual})</option>)}
                   </select>
                 </div>
 
