@@ -110,21 +110,208 @@ const Articles: React.FC = () => {
     setShowModal(true);
   };
 
-  const exportToExcel = () => {
-    const dataToExport = articles.map(art => ({
-      'Nombre': art.nombre,
-      'Descripción': art.descripcion,
-      'Categoría': art.categoria_nombre,
-      'Talla': art.talla,
-      'Stock Actual': art.stock_actual,
-      'Valor Unitario': art.valor,
-      'Valor Total': (art.valor || 0) * art.stock_actual
-    }));
+import React, { useEffect, useState } from 'react';
+import { useAuth } from '../AuthContext';
+import { API_URL } from '../apiConfig';
+import { Plus, Trash2, Edit2, Package, PackagePlus, AlertTriangle, Download } from 'lucide-react';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Artículos");
-    XLSX.writeFile(workbook, "Inventario_Articulos.xlsx");
+interface Article {
+  id: number;
+  nombre: string;
+  descripcion: string;
+  categoria_id: number;
+  categoria_nombre: string;
+  stock_actual: number;
+  talla: string;
+  valor: number;
+}
+
+interface Category {
+  id: number;
+  nombre: string;
+}
+
+const Articles: React.FC = () => {
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [showModal, setShowModal] = useState(false);
+  const [editingArticle, setEditingArticle] = useState<Article | null>(null);
+  const { token } = useAuth();
+
+  const [formData, setFormData] = useState({
+    nombre: '', descripcion: '', categoria_id: '', stock_actual: 0, talla: '', valor: 0
+  });
+
+  const fetchArticles = async () => {
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      const res = await fetch(`${API_URL}/articulos`, { headers });
+      const data = await res.json();
+      setArticles(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+      setArticles([]);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      const res = await fetch(`${API_URL}/categorias`, { headers });
+      const data = await res.json();
+      setCategories(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+      setCategories([]);
+    }
+  };
+
+  useEffect(() => {
+    fetchArticles();
+    fetchCategories();
+  }, [token]);
+
+  // Cálculos para el resumen
+  const totalStock = articles.reduce((acc, art) => acc + art.stock_actual, 0);
+  const lowStockItems = articles.filter(art => art.stock_actual <= 5).length;
+  const totalInvestment = articles.reduce((acc, art) => acc + ((art.valor || 0) * art.stock_actual), 0);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const headers = { 
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}` 
+    };
+    const url = editingArticle 
+      ? `${API_URL}/articulos/${editingArticle.id}` 
+      : `${API_URL}/articulos`;
+    const method = editingArticle ? 'PUT' : 'POST';
+
+    await fetch(url, {
+      method,
+      headers,
+      body: JSON.stringify(formData),
+    });
+    
+    setShowModal(false);
+    setEditingArticle(null);
+    setFormData({ nombre: '', descripcion: '', categoria_id: '', stock_actual: 0, talla: '', valor: 0 });
+    fetchArticles();
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('¿Seguro que desea eliminar este artículo?')) return;
+    await fetch(`${API_URL}/articulos/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    fetchArticles();
+  };
+
+  const handleEdit = (article: Article) => {
+    setEditingArticle(article);
+    setFormData({
+      nombre: article.nombre,
+      descripcion: article.descripcion || '',
+      categoria_id: article.categoria_id?.toString() || '',
+      stock_actual: article.stock_actual,
+      talla: article.talla || '',
+      valor: article.valor || 0
+    });
+    setShowModal(true);
+  };
+
+  const exportToExcel = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Inventario');
+
+    // Título Principal
+    const titleRow = worksheet.addRow(['AUTOBOY - REPORTE DE INVENTARIO']);
+    titleRow.font = { name: 'Arial Black', size: 16, color: { argb: 'FFFFFFFF' } };
+    titleRow.alignment = { vertical: 'middle', horizontal: 'center' };
+    worksheet.mergeCells('A1:G1');
+    titleRow.getCell(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF1E293B' } // Slate 800
+    };
+
+    // Subtítulo con fecha
+    const dateRow = worksheet.addRow(['Fecha de generación: ' + new Date().toLocaleString()]);
+    worksheet.mergeCells('A2:G2');
+    dateRow.alignment = { horizontal: 'center' };
+    dateRow.font = { italic: true, size: 10, color: { argb: 'FF64748B' } };
+
+    worksheet.addRow([]); // Espacio
+
+    // Encabezados de Tabla
+    const headerRow = worksheet.addRow(['ARTÍCULO', 'DESCRIPCIÓN', 'CATEGORÍA', 'TALLA', 'STOCK', 'V. UNITARIO', 'V. TOTAL']);
+    
+    headerRow.eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF2563EB' } // Blue 600
+      };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' }
+      };
+    });
+
+    // Agregar Datos
+    articles.forEach((art) => {
+      const row = worksheet.addRow([
+        art.nombre.toUpperCase(),
+        art.descripcion || 'N/A',
+        art.categoria_nombre,
+        art.talla || 'S/T',
+        art.stock_actual,
+        art.valor || 0,
+        (art.valor || 0) * art.stock_actual
+      ]);
+
+      row.getCell(6).numFmt = '"$"#,##0';
+      row.getCell(7).numFmt = '"$"#,##0';
+      
+      row.eachCell((cell) => {
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+        cell.alignment = { vertical: 'middle' };
+      });
+      row.getCell(5).alignment = { horizontal: 'center' };
+    });
+
+    // Fila de Totales
+    worksheet.addRow([]);
+    const footerRow = worksheet.addRow(['', '', '', 'TOTALES', totalStock, '', totalInvestment]);
+    footerRow.font = { bold: true, size: 12 };
+    footerRow.getCell(7).numFmt = '"$"#,##0';
+    footerRow.getCell(4).alignment = { horizontal: 'right' };
+    footerRow.getCell(5).alignment = { horizontal: 'center' };
+
+    // Ajustar anchos de columnas
+    worksheet.getColumn(1).width = 25;
+    worksheet.getColumn(2).width = 35;
+    worksheet.getColumn(3).width = 20;
+    worksheet.getColumn(4).width = 10;
+    worksheet.getColumn(5).width = 12;
+    worksheet.getColumn(6).width = 15;
+    worksheet.getColumn(7).width = 18;
+
+    // Generar archivo
+    const buffer = await workbook.xlsx.writeBuffer();
+    saveAs(new Blob([buffer]), `AUTOBOY_Inventario_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
   return (
