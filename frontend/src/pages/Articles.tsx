@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../AuthContext';
 import { API_URL } from '../apiConfig';
-import { Plus, Trash2, Edit2, Package, PackagePlus, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, Edit2, Package, PackagePlus, AlertTriangle, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 interface Article {
   id: number;
@@ -11,6 +12,7 @@ interface Article {
   categoria_nombre: string;
   stock_actual: number;
   talla: string;
+  valor: number;
 }
 
 interface Category {
@@ -26,7 +28,7 @@ const Articles: React.FC = () => {
   const { token } = useAuth();
 
   const [formData, setFormData] = useState({
-    nombre: '', descripcion: '', categoria_id: '', stock_actual: 0, talla: ''
+    nombre: '', descripcion: '', categoria_id: '', stock_actual: 0, talla: '', valor: 0
   });
 
   const fetchArticles = async () => {
@@ -81,7 +83,7 @@ const Articles: React.FC = () => {
     
     setShowModal(false);
     setEditingArticle(null);
-    setFormData({ nombre: '', descripcion: '', categoria_id: '', stock_actual: 0, talla: '' });
+    setFormData({ nombre: '', descripcion: '', categoria_id: '', stock_actual: 0, talla: '', valor: 0 });
     fetchArticles();
   };
 
@@ -101,9 +103,27 @@ const Articles: React.FC = () => {
       descripcion: article.descripcion || '',
       categoria_id: article.categoria_id?.toString() || '',
       stock_actual: article.stock_actual,
-      talla: article.talla || ''
+      talla: article.talla || '',
+      valor: article.valor || 0
     });
     setShowModal(true);
+  };
+
+  const exportToExcel = () => {
+    const dataToExport = articles.map(art => ({
+      'Nombre': art.nombre,
+      'Descripción': art.descripcion,
+      'Categoría': art.categoria_nombre,
+      'Talla': art.talla,
+      'Stock Actual': art.stock_actual,
+      'Valor Unitario': art.valor,
+      'Valor Total': art.valor * art.stock_actual
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Artículos");
+    XLSX.writeFile(workbook, "Inventario_Articulos.xlsx");
   };
 
   return (
@@ -113,13 +133,22 @@ const Articles: React.FC = () => {
           <h1 className="text-4xl font-black text-slate-900 tracking-tight">Inventario de Dotación</h1>
           <p className="text-slate-500 font-medium">Control total de existencias y suministros</p>
         </div>
-        <button 
-          onClick={() => { setEditingArticle(null); setFormData({ nombre: '', descripcion: '', categoria_id: '', stock_actual: 0, talla: '' }); setShowModal(true); }}
-          className="flex items-center justify-center space-x-2 bg-blue-600 text-white px-6 py-3 rounded-2xl shadow-lg shadow-blue-100 hover:bg-blue-700 hover:-translate-y-0.5 transition-all active:scale-95 font-bold uppercase tracking-wide text-sm"
-        >
-          <Plus size={20} />
-          <span>Nuevo Artículo</span>
-        </button>
+        <div className="flex gap-3">
+          <button 
+            onClick={exportToExcel}
+            className="flex items-center justify-center space-x-2 bg-emerald-600 text-white px-6 py-3 rounded-2xl shadow-lg shadow-emerald-100 hover:bg-emerald-700 hover:-translate-y-0.5 transition-all active:scale-95 font-bold uppercase tracking-wide text-sm"
+          >
+            <Download size={20} />
+            <span>Descargar Excel</span>
+          </button>
+          <button 
+            onClick={() => { setEditingArticle(null); setFormData({ nombre: '', descripcion: '', categoria_id: '', stock_actual: 0, talla: '', valor: 0 }); setShowModal(true); }}
+            className="flex items-center justify-center space-x-2 bg-blue-600 text-white px-6 py-3 rounded-2xl shadow-lg shadow-blue-100 hover:bg-blue-700 hover:-translate-y-0.5 transition-all active:scale-95 font-bold uppercase tracking-wide text-sm"
+          >
+            <Plus size={20} />
+            <span>Nuevo Artículo</span>
+          </button>
+        </div>
       </header>
 
       {/* Tarjetas de Resumen de Stock */}
@@ -161,6 +190,7 @@ const Articles: React.FC = () => {
                 <th className="px-8 py-5 font-bold text-slate-400 uppercase text-[11px] tracking-widest">Artículo / Talla</th>
                 <th className="px-8 py-5 font-bold text-slate-400 uppercase text-[11px] tracking-widest">Categoría</th>
                 <th className="px-8 py-5 font-bold text-slate-400 uppercase text-[11px] tracking-widest text-center">Stock Actual</th>
+                <th className="px-8 py-5 font-bold text-slate-400 uppercase text-[11px] tracking-widest text-center">Valor</th>
                 <th className="px-8 py-5 font-bold text-slate-400 uppercase text-[11px] tracking-widest text-center">Estado</th>
                 <th className="px-8 py-5 font-bold text-slate-400 uppercase text-[11px] tracking-widest text-right">Acciones</th>
               </tr>
@@ -187,6 +217,9 @@ const Articles: React.FC = () => {
                   <td className="px-8 py-5 text-center">
                     <div className="text-2xl font-black text-slate-700">{art.stock_actual}</div>
                     <div className="text-[9px] font-bold text-slate-400 uppercase">Unidades</div>
+                  </td>
+                  <td className="px-8 py-5 text-center">
+                    <div className="text-lg font-bold text-slate-700">${(art.valor || 0).toLocaleString()}</div>
                   </td>
                   <td className="px-8 py-5 text-center">
                     <span className={`inline-flex items-center px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest ${
@@ -261,9 +294,20 @@ const Articles: React.FC = () => {
                     onChange={(e) => setFormData({...formData, talla: e.target.value})}
                   />
                 </div>
+                <div>
+                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Valor Unitario</label>
+                  <input 
+                    type="number"
+                    className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-slate-800"
+                    placeholder="0"
+                    value={formData.valor}
+                    onChange={(e) => setFormData({...formData, valor: parseInt(e.target.value) || 0})}
+                    required
+                  />
+                </div>
                 {!editingArticle && (
-                  <div className="col-span-2">
-                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Cantidad Inicial (Ingreso a Stock)</label>
+                  <div>
+                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Cantidad Inicial</label>
                     <input 
                       type="number"
                       className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-slate-800"
