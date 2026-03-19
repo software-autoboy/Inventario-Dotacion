@@ -2,118 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../AuthContext';
 import { API_URL } from '../apiConfig';
 import { Plus, Trash2, Edit2, Package, PackagePlus, AlertTriangle, Download } from 'lucide-react';
-import * as XLSX from 'xlsx';
-
-interface Article {
-  id: number;
-  nombre: string;
-  descripcion: string;
-  categoria_id: number;
-  categoria_nombre: string;
-  stock_actual: number;
-  talla: string;
-  valor: number;
-}
-
-interface Category {
-  id: number;
-  nombre: string;
-}
-
-const Articles: React.FC = () => {
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [showModal, setShowModal] = useState(false);
-  const [editingArticle, setEditingArticle] = useState<Article | null>(null);
-  const { token } = useAuth();
-
-  const [formData, setFormData] = useState({
-    nombre: '', descripcion: '', categoria_id: '', stock_actual: 0, talla: '', valor: 0
-  });
-
-  const fetchArticles = async () => {
-    try {
-      const headers = { Authorization: `Bearer ${token}` };
-      const res = await fetch(`${API_URL}/articulos`, { headers });
-      const data = await res.json();
-      setArticles(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error(err);
-      setArticles([]);
-    }
-  };
-
-  const fetchCategories = async () => {
-    try {
-      const headers = { Authorization: `Bearer ${token}` };
-      const res = await fetch(`${API_URL}/categorias`, { headers });
-      const data = await res.json();
-      setCategories(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error(err);
-      setCategories([]);
-    }
-  };
-
-  useEffect(() => {
-    fetchArticles();
-    fetchCategories();
-  }, [token]);
-
-  // Cálculos para el resumen
-  const totalStock = articles.reduce((acc, art) => acc + art.stock_actual, 0);
-  const lowStockItems = articles.filter(art => art.stock_actual <= 5).length;
-  const totalInvestment = articles.reduce((acc, art) => acc + ((art.valor || 0) * art.stock_actual), 0);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const headers = { 
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}` 
-    };
-    const url = editingArticle 
-      ? `${API_URL}/articulos/${editingArticle.id}` 
-      : `${API_URL}/articulos`;
-    const method = editingArticle ? 'PUT' : 'POST';
-
-    await fetch(url, {
-      method,
-      headers,
-      body: JSON.stringify(formData),
-    });
-    
-    setShowModal(false);
-    setEditingArticle(null);
-    setFormData({ nombre: '', descripcion: '', categoria_id: '', stock_actual: 0, talla: '', valor: 0 });
-    fetchArticles();
-  };
-
-  const handleDelete = async (id: number) => {
-    if (!confirm('¿Seguro que desea eliminar este artículo?')) return;
-    await fetch(`${API_URL}/articulos/${id}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    fetchArticles();
-  };
-
-  const handleEdit = (article: Article) => {
-    setEditingArticle(article);
-    setFormData({
-      nombre: article.nombre,
-      descripcion: article.descripcion || '',
-      categoria_id: article.categoria_id?.toString() || '',
-      stock_actual: article.stock_actual,
-      talla: article.talla || '',
-      valor: article.valor || 0
-    });
-    setShowModal(true);
-  };
-
-import React, { useEffect, useState } from 'react';
-import { useAuth } from '../AuthContext';
-import { API_URL } from '../apiConfig';
-import { Plus, Trash2, Edit2, Package, PackagePlus, AlertTriangle, Download } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 
@@ -521,7 +409,7 @@ const Articles: React.FC = () => {
               </div>
               <footer className="flex justify-end items-center space-x-6 pt-8 border-t border-slate-50">
                 <button 
-                  type="button"
+                  type="button" 
                   onClick={() => setShowModal(false)}
                   className="text-slate-400 hover:text-slate-600 font-bold uppercase tracking-widest text-xs"
                 >
