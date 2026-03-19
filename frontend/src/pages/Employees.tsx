@@ -23,6 +23,31 @@ interface Movement {
   talla: string;
 }
 
+import React, { useEffect, useState } from 'react';
+import { API_URL } from '../apiConfig';
+import { useAuth } from '../AuthContext';
+import { Plus, Users, Search, MapPin, Briefcase, Trash2 } from 'lucide-react';
+import GeneratePdf from '../components/GeneratePdf';
+
+interface Employee {
+  id: number;
+  documento: string;
+  nombre_completo: string;
+  cargo: string;
+  area: string;
+}
+
+interface Movement {
+  id: number;
+  articulo_id: number;
+  articulo_nombre: string;
+  empleado_id: number;
+  tipo: string;
+  cantidad: number;
+  fecha: string;
+  talla: string;
+}
+
 const Employees: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [movements, setMovements] = useState<Movement[]>([]);
@@ -64,6 +89,21 @@ const Employees: React.FC = () => {
     setShowModal(false);
     setFormData({ documento: '', nombre_completo: '', cargo: '', area: '' });
     fetchData();
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('¿Seguro que desea eliminar este empleado?')) return;
+    const res = await fetch(`${API_URL}/empleados/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    
+    if (res.ok) {
+      fetchData();
+    } else {
+      const err = await res.json();
+      alert(err.error || 'Error al eliminar');
+    }
   };
 
   const filteredEmployees = employees.filter(emp => 
@@ -124,9 +164,17 @@ const Employees: React.FC = () => {
                 <div className="bg-blue-50 p-3 rounded-2xl text-blue-600">
                   <Users size={24} />
                 </div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-50 px-2 py-1 rounded-lg">
-                  ID: {emp.documento}
-                </span>
+                <div className="flex space-x-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-50 px-2 py-1 rounded-lg">
+                    ID: {emp.documento}
+                  </span>
+                  <button 
+                    onClick={() => handleDelete(emp.id)}
+                    className="p-1 text-slate-300 hover:text-rose-600 transition-colors"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
 
               <h3 className="text-xl font-bold text-slate-800 uppercase mb-4 line-clamp-1">{emp.nombre_completo}</h3>

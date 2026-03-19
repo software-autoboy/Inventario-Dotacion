@@ -116,6 +116,21 @@ app.post('/empleados', authenticateToken, async (req, res) => {
   }
 });
 
+app.delete('/empleados/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    // Primero verificamos si el empleado tiene movimientos asociados
+    const [movs] = await db.query('SELECT id FROM movimientos WHERE empleado_id = ? LIMIT 1', [id]);
+    if (movs.length > 0) {
+      return res.status(400).json({ error: 'No se puede eliminar un empleado con movimientos registrados. Debe eliminar primero sus movimientos o marcarlos como huérfanos.' });
+    }
+    await db.query('DELETE FROM empleados WHERE id = ?', [id]);
+    res.status(200).json({ message: 'Empleado eliminado' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // --- MOVIMIENTOS ---
 app.get('/movimientos', authenticateToken, async (req, res) => {
   try {
