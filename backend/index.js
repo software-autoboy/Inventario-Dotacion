@@ -7,11 +7,21 @@ const db = require('./db');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+app.use(cors({
+  origin: ['http://localhost:5173', 'http://localhost:3000'], // Ajusta según tu frontend
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 
+// Helper para manejar errores de forma segura
+const handleServerError = (res, error) => {
+  console.error('--- ERROR INTERNO ---', error);
+  res.status(500).json({ error: 'Error interno del servidor. Consulte al administrador.' });
+};
+
 app.get('/', (req, res) => {
-  res.send('🚀 Backend de Inventario Autoboy funcionando');
+  res.send('🚀 Backend de Inventario funcionando correctamente');
 });
 
 const authenticateToken = (req, res, next) => {
@@ -41,7 +51,7 @@ app.get('/categorias', authenticateToken, async (req, res) => {
     const [rows] = await db.query('SELECT * FROM categorias ORDER BY nombre ASC');
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    handleServerError(res, error);
   }
 });
 
@@ -51,7 +61,7 @@ app.post('/categorias', authenticateToken, async (req, res) => {
     await db.query('INSERT INTO categorias (nombre) VALUES (?)', [nombre]);
     res.status(201).json({ message: 'Categoría creada' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    handleServerError(res, error);
   }
 });
 
@@ -61,7 +71,7 @@ app.get('/articulos', authenticateToken, async (req, res) => {
     const [rows] = await db.query('SELECT a.*, c.nombre as categoria_nombre FROM articulos a LEFT JOIN categorias c ON a.categoria_id = c.id ORDER BY a.nombre ASC');
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    handleServerError(res, error);
   }
 });
 
@@ -83,7 +93,7 @@ app.post('/articulos', authenticateToken, async (req, res) => {
     await db.query(query, params);
     res.status(201).json({ message: 'Artículo creado' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    handleServerError(res, error);
   }
 });
 
@@ -107,7 +117,7 @@ app.put('/articulos/:id', authenticateToken, async (req, res) => {
     await db.query(query, params);
     res.status(200).json({ message: 'Artículo actualizado' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    handleServerError(res, error);
   }
 });
 
@@ -117,7 +127,7 @@ app.delete('/articulos/:id', authenticateToken, async (req, res) => {
     await db.query('DELETE FROM articulos WHERE id=?', [id]);
     res.status(200).json({ message: 'Artículo eliminado' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    handleServerError(res, error);
   }
 });
 
@@ -127,7 +137,7 @@ app.get('/empleados', authenticateToken, async (req, res) => {
     const [rows] = await db.query('SELECT * FROM empleados ORDER BY nombre_completo ASC');
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    handleServerError(res, error);
   }
 });
 
@@ -137,7 +147,7 @@ app.post('/empleados', authenticateToken, async (req, res) => {
     await db.query('INSERT INTO empleados (documento, nombre_completo, cargo, area) VALUES (?, ?, ?, ?)', [documento, nombre_completo, cargo, area]);
     res.status(201).json({ message: 'Empleado creado' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    handleServerError(res, error);
   }
 });
 
@@ -152,7 +162,7 @@ app.delete('/empleados/:id', authenticateToken, async (req, res) => {
     await db.query('DELETE FROM empleados WHERE id = ?', [id]);
     res.status(200).json({ message: 'Empleado eliminado' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    handleServerError(res, error);
   }
 });
 
@@ -168,7 +178,7 @@ app.get('/movimientos', authenticateToken, async (req, res) => {
     `);
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    handleServerError(res, error);
   }
 });
 
@@ -218,7 +228,7 @@ app.post('/movimientos', authenticateToken, async (req, res) => {
     res.status(201).json({ message: 'Movimiento registrado' });
   } catch (error) {
     await connection.rollback();
-    res.status(500).json({ error: error.message });
+    handleServerError(res, error);
   } finally {
     connection.release();
   }
