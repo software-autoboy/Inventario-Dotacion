@@ -83,6 +83,20 @@ const Login: React.FC = () => {
             Iniciar Sesión
           </button>
         </form>
+
+        <div className="mt-8 p-4 bg-blue-50/50 rounded-2xl border border-blue-100">
+          <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-2 text-center">Credenciales de Acceso</p>
+          <div className="flex justify-around text-sm font-bold text-slate-600">
+            <div className="flex flex-col items-center">
+              <span className="text-[10px] text-slate-400 uppercase">Usuario</span>
+              <span>admin</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <span className="text-[10px] text-slate-400 uppercase">Contraseña</span>
+              <span>admin123</span>
+            </div>
+          </div>
+        </div>
         
         <div className="mt-10 text-center">
           <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">
