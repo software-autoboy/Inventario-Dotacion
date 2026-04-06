@@ -93,7 +93,7 @@ const Login: React.FC = () => {
             </div>
             <div className="flex flex-col items-center">
               <span className="text-[10px] text-slate-400 uppercase">Contraseña</span>
-              <span>admin123</span>
+              <span>Autoboy2026*</span>
             </div>
           </div>
         </div>
