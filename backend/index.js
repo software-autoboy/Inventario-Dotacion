@@ -1,11 +1,21 @@
 const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 const db = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Configuración de Rate Limit para el login
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 10, // Límite de 10 intentos
+  message: { error: 'Demasiados intentos de inicio de sesión. Intente de nuevo en 15 minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 app.use(cors({
   origin: function (origin, callback) {
@@ -50,7 +60,7 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-app.post('/login', (req, res) => {
+app.post('/login', loginLimiter, (req, res) => {
   const { username, password } = req.body;
   if (username === process.env.ADMIN_USER && password === process.env.ADMIN_PASS) {
     const token = jwt.sign({ username }, process.env.JWT_SECRET, { expiresIn: '8h' });
