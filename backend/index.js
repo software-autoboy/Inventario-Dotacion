@@ -26,8 +26,10 @@ app.use(cors({
       'https://inventario-dotacion-v378.vercel.app',
       'https://inventario-dotacion2.vercel.app'
     ];
-    // Permitir si está en la lista o si es un subdominio de vercel.app
-    if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+    // Permitir si el origen está en la lista o si termina en .vercel.app
+    const isVercel = origin && origin.endsWith('.vercel.app');
+    
+    if (!origin || allowedOrigins.includes(origin) || isVercel) {
       callback(null, true);
     } else {
       callback(new Error('No permitido por CORS'));
