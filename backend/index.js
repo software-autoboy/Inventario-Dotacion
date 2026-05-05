@@ -45,7 +45,7 @@ const handleServerError = (res, error) => {
 };
 
 app.get('/', (req, res) => {
-  res.send('🚀 Backend de Inventario funcionando correctamente');
+  res.send('🚀 Backend de Inventario (Nueva Cuenta) funcionando correctamente');
 });
 
 const authenticateToken = (req, res, next) => {
