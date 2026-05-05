@@ -23,7 +23,8 @@ app.use(cors({
       'http://localhost:5173',
       'http://localhost:3000',
       'https://inventario-dotacion.vercel.app',
-      'https://inventario-dotacion-v378.vercel.app'
+      'https://inventario-dotacion-v378.vercel.app',
+      'https://inventario-dotacion2.vercel.app'
     ];
     // Permitir si está en la lista o si es un subdominio de vercel.app
     if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
