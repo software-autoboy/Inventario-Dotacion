@@ -60,6 +60,10 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
+app.get('/login', (req, res) => {
+  res.send('✅ El endpoint /login está vivo. Ahora intenta hacer el POST desde el frontend.');
+});
+
 app.post('/login', (req, res) => {
   const { username, password } = req.body;
   if (username === process.env.ADMIN_USER && password === process.env.ADMIN_PASS) {
