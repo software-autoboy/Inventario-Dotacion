@@ -32,10 +32,14 @@ app.use(cors({
 
 app.use(express.json());
 
-// 2. Log de peticiones para ver qué llega
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.path} - Origin: ${req.headers.origin}`);
-  next();
+// 2. Configuración de Rate Limit para el login (Protección contra fuerza bruta)
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 5, // Límite de 5 intentos por ventana de 15 min
+  message: { error: 'Demasiados intentos de inicio de sesión. Intente de nuevo en 15 minutos.' },
+  standardHeaders: true, // Retorna info del límite en los headers `RateLimit-*`
+  legacyHeaders: false, // Desactiva los headers `X-RateLimit-*`
+  trustProxy: true // Necesario para Vercel ya que usa proxies
 });
 
 // Helper para manejar errores de forma segura
@@ -54,7 +58,7 @@ const authenticateToken = (req, res, next) => {
   if (!token) return res.status(401).json({ error: 'No autorizado' });
 
   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) return res.status(403).json({ error: 'Token inválido' });
+    if (err) return res.status(403).json({ error: 'Sesión expirada o token inválido' });
     req.user = user;
     next();
   });
@@ -64,10 +68,11 @@ app.get('/login', (req, res) => {
   res.send('✅ El endpoint /login está vivo. Ahora intenta hacer el POST desde el frontend.');
 });
 
-app.post('/login', (req, res) => {
+app.post('/login', loginLimiter, (req, res) => {
   const { username, password } = req.body;
   if (username === process.env.ADMIN_USER && password === process.env.ADMIN_PASS) {
-    const token = jwt.sign({ username }, process.env.JWT_SECRET, { expiresIn: '8h' });
+    // Sesión de 1 hora de duración
+    const token = jwt.sign({ username }, process.env.JWT_SECRET, { expiresIn: '1h' });
     return res.json({ token });
   }
   res.status(401).json({ message: 'Credenciales inválidas' });
