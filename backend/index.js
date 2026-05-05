@@ -262,6 +262,16 @@ app.post('/movimientos', authenticateToken, async (req, res) => {
   }
 });
 
+// NUEVO: Diagnóstico de rutas
+app.use((req, res) => {
+  console.log(`Ruta no encontrada: ${req.method} ${req.path}`);
+  res.status(404).json({ 
+    error: 'Ruta no encontrada en Express', 
+    intentaste: `${req.method} ${req.path}`,
+    servidor: 'Express en Vercel'
+  });
+});
+
 if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
     console.log(`Servidor en puerto ${PORT}`);
