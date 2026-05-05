@@ -258,8 +258,10 @@ app.post('/movimientos', authenticateToken, async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Servidor en puerto ${PORT}`);
-});
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`Servidor en puerto ${PORT}`);
+  });
+}
 
 module.exports = app;
