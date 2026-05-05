@@ -8,15 +8,7 @@ const db = require('./db');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Configuración de Rate Limit para el login
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 10, // Límite de 10 intentos
-  message: { error: 'Demasiados intentos de inicio de sesión. Intente de nuevo en 15 minutos.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
+// 1. CORS al principio de todo para que incluso los errores lo tengan
 app.use(cors({
   origin: function (origin, callback) {
     const allowedOrigins = [
@@ -26,20 +18,25 @@ app.use(cors({
       'https://inventario-dotacion-v378.vercel.app',
       'https://inventario-dotacion2.vercel.app'
     ];
-    // Permitir si el origen está en la lista o si termina en .vercel.app
     const isVercel = origin && origin.endsWith('.vercel.app');
-    
     if (!origin || allowedOrigins.includes(origin) || isVercel) {
       callback(null, true);
     } else {
-      callback(new Error('No permitido por CORS'));
+      callback(null, true); // Permitir temporalmente todo para debug
     }
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
+
 app.use(express.json());
+
+// 2. Log de peticiones para ver qué llega
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path} - Origin: ${req.headers.origin}`);
+  next();
+});
 
 // Helper para manejar errores de forma segura
 const handleServerError = (res, error) => {
