@@ -60,7 +60,10 @@ const authenticateToken = (req, res, next) => {
   if (!token) return res.status(401).json({ error: 'No autorizado' });
 
   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) return res.status(403).json({ error: 'Sesión expirada o token inválido' });
+    if (err) {
+      console.error('--- ERROR JWT ---', err.message);
+      return res.status(403).json({ error: 'Sesión expirada o token inválido' });
+    }
     req.user = user;
     next();
   });
