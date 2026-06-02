@@ -11,9 +11,10 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  ssl: {
-    rejectUnauthorized: false
-  }
+  // Solo usar SSL si no es localhost o si se solicita explícitamente
+  ssl: (process.env.DB_HOST !== '127.0.0.1' && process.env.DB_HOST !== 'localhost') || process.env.DB_SSL === 'true' 
+    ? { rejectUnauthorized: false } 
+    : null
 });
 
 module.exports = pool;

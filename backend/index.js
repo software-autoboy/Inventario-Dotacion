@@ -32,14 +32,16 @@ app.use(cors({
 
 app.use(express.json());
 
+// Necesario para que express-rate-limit detecte correctamente la IP detrás de los proxies de Vercel
+app.set('trust proxy', true);
+
 // 2. Configuración de Rate Limit para el login (Protección contra fuerza bruta)
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
   max: 5, // Límite de 5 intentos por ventana de 15 min
   message: { error: 'Demasiados intentos de inicio de sesión. Intente de nuevo en 15 minutos.' },
   standardHeaders: true, // Retorna info del límite en los headers `RateLimit-*`
-  legacyHeaders: false, // Desactiva los headers `X-RateLimit-*`
-  trustProxy: true // Necesario para Vercel ya que usa proxies
+  legacyHeaders: false // Desactiva los headers `X-RateLimit-*`
 });
 
 // Helper para manejar errores de forma segura
